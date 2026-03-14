@@ -1,0 +1,135 @@
+{
+  "usuarios": [
+    {
+      "id": 1,
+      "numero": "98677393760328",
+      "nome": "D",
+      "saldo": 0,
+      "criado_em": "2026-03-14T23:24:45.288Z"
+    },
+    {
+      "id": 2,
+      "numero": "teste",
+      "nome": "Teste",
+      "saldo": 0,
+      "criado_em": "2026-03-14T23:35:00.715Z"
+    }
+  ],
+  "pedidos": [],
+  "recargas": [],
+  "mensagens": [
+    {
+      "id": 1,
+      "usuario_numero": "98677393760328",
+      "usuario_nome": "D",
+      "direcao": "recebida",
+      "texto": "Oi",
+      "criado_em": "2026-03-14T23:24:45.289Z"
+    },
+    {
+      "id": 2,
+      "usuario_numero": "98677393760328",
+      "usuario_nome": "D",
+      "direcao": "enviada",
+      "texto": "👋 Olá, *D*! Bem-vindo à *DigiStore* 🛒\n\nEscolha uma opção:\n\n📱 *NÚMEROS VIRTUAIS*\n1️⃣ Número WhatsApp BR — R$7,00\n2️⃣ Número Telegram BR — R$7,00\n3️⃣ Número Gmail/Google — R$7,00\n4️⃣ Número Instagram — R$7,00\n5️⃣ Número Facebook — R$7,00\n6️⃣ Número USA/Europa — R$10,00\n\n💳 *MINHA CONTA*\n7️⃣ Ver meu saldo\n8️⃣ Recarregar créditos\n9️⃣ Histórico de pedidos\n\nDigite o número da opção 👇",
+      "criado_em": "2026-03-14T23:24:45.290Z"
+    },
+    {
+      "id": 3,
+      "usuario_numero": "98677393760328",
+      "usuario_nome": "D",
+      "direcao": "recebida",
+      "texto": "Oi",
+      "criado_em": "2026-03-14T23:25:26.369Z"
+    },
+    {
+      "id": 4,
+      "usuario_numero": "98677393760328",
+      "usuario_nome": "D",
+      "direcao": "enviada",
+      "texto": "👋 Olá, *D*! Bem-vindo à *DigiStore* 🛒\n\nEscolha uma opção:\n\n📱 *NÚMEROS VIRTUAIS*\n1️⃣ Número WhatsApp BR — R$7,00\n2️⃣ Número Telegram BR — R$7,00\n3️⃣ Número Gmail/Google — R$7,00\n4️⃣ Número Instagram — R$7,00\n5️⃣ Número Facebook — R$7,00\n6️⃣ Número USA/Europa — R$10,00\n\n💳 *MINHA CONTA*\n7️⃣ Ver meu saldo\n8️⃣ Recarregar créditos\n9️⃣ Histórico de pedidos\n\nDigite o número da opção 👇",
+      "criado_em": "2026-03-14T23:25:26.369Z"
+    },
+    {
+      "id": 5,
+      "usuario_numero": "98677393760328",
+      "usuario_nome": "D",
+      "direcao": "recebida",
+      "texto": "Oi",
+      "criado_em": "2026-03-14T23:34:02.661Z"
+    },
+    {
+      "id": 6,
+      "usuario_numero": "98677393760328",
+      "usuario_nome": "D",
+      "direcao": "enviada",
+      "texto": "👋 Olá, *D*! Bem-vindo à *DigiStore* 🛒\n\nEscolha uma opção:\n\n📱 *NÚMEROS VIRTUAIS*\n1️⃣ Número WhatsApp BR — R$7,00\n2️⃣ Número Telegram BR — R$7,00\n3️⃣ Número Gmail/Google — R$7,00\n4️⃣ Número Instagram — R$7,00\n5️⃣ Número Facebook — R$7,00\n6️⃣ Número USA/Europa — R$10,00\n\n💳 *MINHA CONTA*\n7️⃣ Ver meu saldo\n8️⃣ Recarregar créditos\n9️⃣ Histórico de pedidos\n\nDigite o número da opção 👇",
+      "criado_em": "2026-03-14T23:34:02.662Z"
+    },
+    {
+      "id": 7,
+      "usuario_numero": "98677393760328",
+      "usuario_nome": "D",
+      "direcao": "recebida",
+      "texto": "Oi",
+      "criado_em": "2026-03-14T23:34:14.293Z"
+    },
+    {
+      "id": 8,
+      "usuario_numero": "98677393760328",
+      "usuario_nome": "D",
+      "direcao": "enviada",
+      "texto": "👋 Olá, *D*! Bem-vindo à *DigiStore* 🛒\n\nEscolha uma opção:\n\n📱 *NÚMEROS VIRTUAIS*\n1️⃣ Número WhatsApp BR — R$7,00\n2️⃣ Número Telegram BR — R$7,00\n3️⃣ Número Gmail/Google — R$7,00\n4️⃣ Número Instagram — R$7,00\n5️⃣ Número Facebook — R$7,00\n6️⃣ Número USA/Europa — R$10,00\n\n💳 *MINHA CONTA*\n7️⃣ Ver meu saldo\n8️⃣ Recarregar créditos\n9️⃣ Histórico de pedidos\n\nDigite o número da opção 👇",
+      "criado_em": "2026-03-14T23:34:14.293Z"
+    },
+    {
+      "id": 9,
+      "usuario_numero": "98677393760328",
+      "usuario_nome": "D",
+      "direcao": "recebida",
+      "texto": "Oi",
+      "criado_em": "2026-03-14T23:37:37.925Z"
+    },
+    {
+      "id": 10,
+      "usuario_numero": "98677393760328",
+      "usuario_nome": "D",
+      "direcao": "enviada",
+      "texto": "👋 Olá, *D*! Bem-vindo à *DigiStore* 🛒\n\nEscolha uma opção:\n\n📱 *NÚMEROS VIRTUAIS*\n1️⃣ Número WhatsApp BR — R$7,00\n2️⃣ Número Telegram BR — R$7,00\n3️⃣ Número Gmail/Google — R$7,00\n4️⃣ Número Instagram — R$7,00\n5️⃣ Número Facebook — R$7,00\n6️⃣ Número USA/Europa — R$10,00\n\n💳 *MINHA CONTA*\n7️⃣ Ver meu saldo\n8️⃣ Recarregar créditos\n9️⃣ Histórico de pedidos\n\nDigite o número da opção 👇",
+      "criado_em": "2026-03-14T23:37:37.926Z"
+    },
+    {
+      "id": 11,
+      "usuario_numero": "98677393760328",
+      "usuario_nome": "D",
+      "direcao": "recebida",
+      "texto": "Oi",
+      "criado_em": "2026-03-14T23:37:57.252Z"
+    },
+    {
+      "id": 12,
+      "usuario_numero": "98677393760328",
+      "usuario_nome": "D",
+      "direcao": "enviada",
+      "texto": "👋 Olá, *D*! Bem-vindo à *DigiStore* 🛒\n\nEscolha uma opção:\n\n📱 *NÚMEROS VIRTUAIS*\n1️⃣ Número WhatsApp BR — R$7,00\n2️⃣ Número Telegram BR — R$7,00\n3️⃣ Número Gmail/Google — R$7,00\n4️⃣ Número Instagram — R$7,00\n5️⃣ Número Facebook — R$7,00\n6️⃣ Número USA/Europa — R$10,00\n\n💳 *MINHA CONTA*\n7️⃣ Ver meu saldo\n8️⃣ Recarregar créditos\n9️⃣ Histórico de pedidos\n\nDigite o número da opção 👇",
+      "criado_em": "2026-03-14T23:37:57.253Z"
+    },
+    {
+      "id": 13,
+      "usuario_numero": "98677393760328",
+      "usuario_nome": "D",
+      "direcao": "recebida",
+      "texto": "Oi",
+      "criado_em": "2026-03-14T23:42:49.463Z"
+    },
+    {
+      "id": 14,
+      "usuario_numero": "98677393760328",
+      "usuario_nome": "D",
+      "direcao": "enviada",
+      "texto": "👋 Olá, *D*! Bem-vindo à *DigiStore* 🛒\n\nEscolha uma opção:\n\n📱 *NÚMEROS VIRTUAIS*\n1️⃣ Número WhatsApp BR — R$7,00\n2️⃣ Número Telegram BR — R$7,00\n3️⃣ Número Gmail/Google — R$7,00\n4️⃣ Número Instagram — R$7,00\n5️⃣ Número Facebook — R$7,00\n6️⃣ Número USA/Europa — R$10,00\n\n💳 *MINHA CONTA*\n7️⃣ Ver meu saldo\n8️⃣ Recarregar créditos\n9️⃣ Histórico de pedidos\n\nDigite o número da opção 👇",
+      "criado_em": "2026-03-14T23:42:49.463Z"
+    }
+  ],
+  "broadcasts": []
+}

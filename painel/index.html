@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DigiStore — Painel Admin</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f0f; color: #eee; min-height: 100vh; }
+    header { background: #1a1a2e; padding: 20px 30px; border-bottom: 2px solid #25d366; display: flex; align-items: center; gap: 15px; }
+    header h1 { font-size: 1.4rem; color: #25d366; }
+    header span { color: #888; font-size: 0.9rem; }
+    .tabs { display: flex; gap: 0; background: #111; border-bottom: 1px solid #333; padding: 0 30px; overflow-x: auto; }
+    .tab { padding: 14px 22px; cursor: pointer; color: #888; border-bottom: 3px solid transparent; transition: all 0.2s; font-size: 0.88rem; white-space: nowrap; }
+    .tab.active { color: #25d366; border-bottom-color: #25d366; }
+    .container { padding: 28px; max-width: 1150px; margin: 0 auto; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 28px; }
+    .card { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 12px; padding: 20px; }
+    .card .label { color: #666; font-size: 0.75rem; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+    .card .value { font-size: 1.7rem; font-weight: bold; color: #25d366; }
+    .section { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 12px; padding: 22px; margin-bottom: 22px; }
+    .section h2 { font-size: 0.85rem; color: #666; margin-bottom: 18px; text-transform: uppercase; letter-spacing: 1px; display: flex; justify-content: space-between; align-items: center; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    th { text-align: left; padding: 10px 14px; color: #555; font-weight: 500; border-bottom: 1px solid #222; font-size: 0.75rem; text-transform: uppercase; }
+    td { padding: 11px 14px; border-bottom: 1px solid #1a1a1a; }
+    tr:hover td { background: #1f1f1f; }
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 0.72rem; font-weight: 600; }
+    .badge.concluido { background: #1a3a2a; color: #25d366; }
+    .badge.pendente { background: #3a3a1a; color: #f0c040; }
+    .badge.timeout { background: #3a1a1a; color: #f06060; }
+    .badge.aguardando_sms { background: #1a2a3a; color: #60a0f0; }
+    .badge.recebida { background: #1a2a1a; color: #60d090; }
+    .badge.enviada { background: #1a1a3a; color: #6090d0; }
+    .form-row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group label { font-size: 0.78rem; color: #666; }
+    input, textarea { background: #111; border: 1px solid #2a2a2a; color: #eee; padding: 10px 14px; border-radius: 8px; font-size: 0.875rem; }
+    input { width: 220px; }
+    textarea { width: 100%; min-height: 100px; resize: vertical; font-family: inherit; margin-bottom: 12px; }
+    input:focus, textarea:focus { outline: none; border-color: #25d366; }
+    button { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 0.875rem; font-weight: 600; transition: opacity 0.2s; }
+    .btn-green { background: #25d366; color: #000; }
+    .btn-red { background: #e74c3c; color: #fff; }
+    .btn-orange { background: #e67e22; color: #fff; }
+    .btn-gray { background: #2a2a2a; color: #aaa; font-size: 0.78rem; padding: 6px 14px; }
+    button:hover { opacity: 0.85; }
+    .hidden { display: none; }
+    .saldo-verde { color: #25d366; font-weight: bold; }
+    .empty { text-align: center; padding: 40px; color: #444; }
+    .broadcast-box { background: #111; border: 1px solid #2a2a2a; border-radius: 10px; padding: 20px; margin-bottom: 20px; }
+    .broadcast-info { background: #1a2a1a; border: 1px solid #25d36633; border-radius: 8px; padding: 14px 18px; margin-bottom: 16px; font-size: 0.875rem; color: #aaa; line-height: 1.6; }
+    .broadcast-info strong { color: #25d366; }
+    .resultado { padding: 12px 16px; border-radius: 8px; font-size: 0.875rem; margin-top: 14px; display: none; }
+    .resultado.ok { background: #1a3a2a; color: #25d366; border: 1px solid #25d36655; }
+    .resultado.erro { background: #3a1a1a; color: #f06060; border: 1px solid #f0606055; }
+    .msg-texto { max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #bbb; }
+    .contador { font-size: 0.78rem; color: #555; margin-top: 6px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div style="font-size:1.5rem">💚</div>
+  <div>
+    <h1>DigiStore — Painel Admin</h1>
+    <span id="status-conexao">⏳ Verificando conexão...</span>
+  </div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="showTab('dashboard', this)">📊 Dashboard</div>
+  <div class="tab" onclick="showTab('usuarios', this)">👥 Usuários</div>
+  <div class="tab" onclick="showTab('pedidos', this)">📦 Pedidos</div>
+  <div class="tab" onclick="showTab('mensagens', this)">💬 Mensagens</div>
+  <div class="tab" onclick="showTab('saldo', this)">💰 Saldo</div>
+  <div class="tab" onclick="showTab('broadcast', this)">📡 Broadcast</div>
+</div>
+
+<div class="container">
+
+  <!-- DASHBOARD -->
+  <div id="tab-dashboard">
+    <div class="cards">
+      <div class="card"><div class="label">Usuários</div><div class="value" id="d-usuarios">—</div></div>
+      <div class="card"><div class="label">Pedidos Total</div><div class="value" id="d-pedidos">—</div></div>
+      <div class="card"><div class="label">Concluídos</div><div class="value" id="d-concluidos">—</div></div>
+      <div class="card"><div class="label">Receita Total</div><div class="value" id="d-receita">—</div></div>
+      <div class="card"><div class="label">Interações</div><div class="value" id="d-interacoes">—</div></div>
+    </div>
+  </div>
+
+  <!-- USUÁRIOS -->
+  <div id="tab-usuarios" class="hidden">
+    <div class="section">
+      <h2>Clientes cadastrados <button class="btn-gray" onclick="carregarUsuarios()">🔄 Atualizar</button></h2>
+      <table>
+        <thead><tr><th>Nome</th><th>Número</th><th>Saldo</th><th>Cadastro</th></tr></thead>
+        <tbody id="tb-usuarios"><tr><td colspan="4" class="empty">Carregando...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PEDIDOS -->
+  <div id="tab-pedidos" class="hidden">
+    <div class="section">
+      <h2>Pedidos <button class="btn-gray" onclick="carregarPedidos()">🔄 Atualizar</button></h2>
+      <table>
+        <thead><tr><th>Serviço</th><th>Usuário</th><th>Número Virtual</th><th>Código SMS</th><th>Valor</th><th>Status</th><th>Data</th></tr></thead>
+        <tbody id="tb-pedidos"><tr><td colspan="7" class="empty">Carregando...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- MENSAGENS -->
+  <div id="tab-mensagens" class="hidden">
+    <div class="section">
+      <h2>Histórico completo de mensagens <button class="btn-gray" onclick="carregarMensagens()">🔄 Atualizar</button></h2>
+      <table>
+        <thead><tr><th>Direção</th><th>Usuário</th><th>Número</th><th>Mensagem</th><th>Data/Hora</th></tr></thead>
+        <tbody id="tb-mensagens"><tr><td colspan="5" class="empty">Carregando...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- SALDO -->
+  <div id="tab-saldo" class="hidden">
+    <div class="section">
+      <h2>Gerenciar saldo de cliente</h2>
+      <div class="form-row" style="margin-bottom:16px">
+        <div class="form-group">
+          <label>Número do cliente (com DDI)</label>
+          <input type="text" id="s-numero" placeholder="Ex: 5591999999999">
+        </div>
+        <div class="form-group">
+          <label>Valor (R$)</label>
+          <input type="number" id="s-valor" placeholder="Ex: 50" min="0" step="0.01" style="width:140px">
+        </div>
+        <button class="btn-green" onclick="gerenciarSaldo('add')">➕ Adicionar</button>
+        <button class="btn-red" onclick="gerenciarSaldo('remove')">➖ Remover</button>
+        <button class="btn-orange" onclick="gerenciarSaldo('zerar')">🗑️ Zerar</button>
+      </div>
+      <div id="s-resultado" class="resultado"></div>
+    </div>
+  </div>
+
+  <!-- BROADCAST -->
+  <div id="tab-broadcast" class="hidden">
+    <div class="broadcast-info">
+      <strong>📡 O que é o Broadcast?</strong><br>
+      É uma mensagem enviada para <strong>todos os seus clientes ao mesmo tempo</strong>.<br>
+      Use em caso de emergência (número caiu, novo contato) ou para avisos importantes.<br>
+      <br>
+      ⚠️ <strong>Use com moderação</strong> — mensagens em massa podem causar bloqueio do número.
+    </div>
+
+    <div class="broadcast-box">
+      <div class="form-group" style="margin-bottom:8px">
+        <label style="font-size:0.82rem;color:#666;margin-bottom:8px;display:block">Mensagem para enviar a todos os clientes</label>
+        <textarea id="b-mensagem" placeholder="Ex: ⚠️ Nosso número foi atualizado! Salva esse novo contato: +55 11 99999-9999 😊"></textarea>
+        <div class="contador" id="b-contador">0 caracteres</div>
+      </div>
+      <div style="display:flex;gap:12px;align-items:center">
+        <button class="btn-green" onclick="enviarBroadcast()" id="b-btn">📡 Enviar para todos</button>
+        <span id="b-total" style="color:#666;font-size:0.85rem"></span>
+      </div>
+      <div id="b-resultado" class="resultado"></div>
+    </div>
+
+    <div class="section">
+      <h2>Histórico de broadcasts <button class="btn-gray" onclick="carregarBroadcasts()">🔄 Atualizar</button></h2>
+      <table>
+        <thead><tr><th>Mensagem</th><th>Enviados</th><th>Erros</th><th>Status</th><th>Data</th></tr></thead>
+        <tbody id="tb-broadcasts"><tr><td colspan="5" class="empty">Nenhum broadcast ainda</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const API = 'http://localhost:3000';
+
+  // Contador de caracteres
+  document.getElementById('b-mensagem').addEventListener('input', function() {
+    document.getElementById('b-contador').textContent = this.value.length + ' caracteres';
+  });
+
+  function showTab(tab, el) {
+    document.querySelectorAll('[id^="tab-"]').forEach(e => e.classList.add('hidden'));
+    document.querySelectorAll('.tab').forEach(e => e.classList.remove('active'));
+    document.getElementById(`tab-${tab}`).classList.remove('hidden');
+    el.classList.add('active');
+    if (tab === 'dashboard') carregarDashboard();
+    if (tab === 'usuarios') carregarUsuarios();
+    if (tab === 'pedidos') carregarPedidos();
+    if (tab === 'mensagens') carregarMensagens();
+    if (tab === 'broadcast') { carregarBroadcasts(); carregarTotalClientes(); }
+  }
+
+  async function carregarDashboard() {
+    try {
+      const s = await fetch(`${API}/admin/stats`).then(r => r.json());
+      document.getElementById('d-usuarios').textContent = s.totalUsuarios;
+      document.getElementById('d-pedidos').textContent = s.totalPedidos;
+      document.getElementById('d-concluidos').textContent = s.totalConcluidos;
+      document.getElementById('d-receita').textContent = `R$${s.receitaTotal.toFixed(2)}`;
+      document.getElementById('d-interacoes').textContent = s.totalInteracoes;
+      document.getElementById('status-conexao').textContent = '🟢 Bot online';
+    } catch {
+      document.getElementById('status-conexao').textContent = '🔴 Bot offline — inicie com npm start';
+    }
+  }
+
+  async function carregarUsuarios() {
+    const usuarios = await fetch(`${API}/admin/usuarios`).then(r => r.json());
+    const tb = document.getElementById('tb-usuarios');
+    if (!usuarios.length) { tb.innerHTML = '<tr><td colspan="4" class="empty">Nenhum usuário ainda</td></tr>'; return; }
+    tb.innerHTML = usuarios.map(u => `
+      <tr>
+        <td>${u.nome}</td>
+        <td>${u.numero}</td>
+        <td class="saldo-verde">R$${u.saldo.toFixed(2)}</td>
+        <td>${new Date(u.criado_em).toLocaleDateString('pt-BR')}</td>
+      </tr>`).join('');
+  }
+
+  async function carregarPedidos() {
+    const pedidos = await fetch(`${API}/admin/pedidos`).then(r => r.json());
+    const tb = document.getElementById('tb-pedidos');
+    if (!pedidos.length) { tb.innerHTML = '<tr><td colspan="7" class="empty">Nenhum pedido ainda</td></tr>'; return; }
+    tb.innerHTML = pedidos.map(p => `
+      <tr>
+        <td>${p.servico}</td>
+        <td>${p.usuario_numero}</td>
+        <td>${p.numero_virtual || '—'}</td>
+        <td>${p.codigo_sms || '—'}</td>
+        <td>R$${p.valor.toFixed(2)}</td>
+        <td><span class="badge ${p.status}">${p.status}</span></td>
+        <td>${new Date(p.criado_em).toLocaleDateString('pt-BR')}</td>
+      </tr>`).join('');
+  }
+
+  async function carregarMensagens() {
+    const msgs = await fetch(`${API}/admin/mensagens`).then(r => r.json());
+    const tb = document.getElementById('tb-mensagens');
+    if (!msgs.length) { tb.innerHTML = '<tr><td colspan="5" class="empty">Nenhuma mensagem ainda</td></tr>'; return; }
+    tb.innerHTML = msgs.map(m => `
+      <tr>
+        <td><span class="badge ${m.direcao}">${m.direcao === 'recebida' ? '📥 recebida' : '📤 enviada'}</span></td>
+        <td>${m.usuario_nome}</td>
+        <td>${m.usuario_numero}</td>
+        <td class="msg-texto" title="${m.texto.replace(/"/g, '&quot;')}">${m.texto}</td>
+        <td>${new Date(m.criado_em).toLocaleString('pt-BR')}</td>
+      </tr>`).join('');
+  }
+
+  async function carregarBroadcasts() {
+    const bcs = await fetch(`${API}/admin/broadcasts`).then(r => r.json());
+    const tb = document.getElementById('tb-broadcasts');
+    if (!bcs.length) { tb.innerHTML = '<tr><td colspan="5" class="empty">Nenhum broadcast ainda</td></tr>'; return; }
+    tb.innerHTML = bcs.map(b => `
+      <tr>
+        <td class="msg-texto" title="${b.mensagem.replace(/"/g, '&quot;')}">${b.mensagem}</td>
+        <td style="color:#25d366">${b.total_enviados}</td>
+        <td style="color:#f06060">${b.total_erros}</td>
+        <td><span class="badge ${b.status === 'concluido' ? 'concluido' : 'pendente'}">${b.status}</span></td>
+        <td>${new Date(b.criado_em).toLocaleString('pt-BR')}</td>
+      </tr>`).join('');
+  }
+
+  async function carregarTotalClientes() {
+    const usuarios = await fetch(`${API}/admin/usuarios`).then(r => r.json());
+    document.getElementById('b-total').textContent = `${usuarios.length} clientes na base`;
+  }
+
+  async function gerenciarSaldo(acao) {
+    const numero = document.getElementById('s-numero').value.trim();
+    const valor = parseFloat(document.getElementById('s-valor').value);
+    const res = document.getElementById('s-resultado');
+
+    if (!numero) { mostrarResultado(res, '❌ Preencha o número do cliente', false); return; }
+
+    try {
+      let endpoint, body;
+      if (acao === 'add') {
+        if (isNaN(valor)) { mostrarResultado(res, '❌ Preencha o valor', false); return; }
+        endpoint = '/admin/saldo/add'; body = { numero, valor };
+      } else if (acao === 'remove') {
+        if (isNaN(valor)) { mostrarResultado(res, '❌ Preencha o valor', false); return; }
+        endpoint = '/admin/saldo/remove'; body = { numero, valor };
+      } else {
+        endpoint = '/admin/saldo/remove'; body = { numero, valor: 999999 };
+      }
+
+      const r = await fetch(`${API}${endpoint}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+      }).then(r => r.json());
+
+      const ações = { add: 'adicionado', remove: 'removido', zerar: 'zerado' };
+      mostrarResultado(res, `✅ Saldo ${ações[acao]}! Novo saldo: R$${r.saldo.toFixed(2)}`, true);
+    } catch (e) {
+      mostrarResultado(res, '❌ Erro: ' + e.message, false);
+    }
+  }
+
+  async function enviarBroadcast() {
+    const mensagem = document.getElementById('b-mensagem').value.trim();
+    const res = document.getElementById('b-resultado');
+    const btn = document.getElementById('b-btn');
+
+    if (!mensagem) { mostrarResultado(res, '❌ Escreva a mensagem antes de enviar', false); return; }
+
+    if (!confirm(`Enviar essa mensagem para TODOS os clientes?\n\n"${mensagem}"`)) return;
+
+    btn.disabled = true;
+    btn.textContent = '⏳ Enviando...';
+
+    try {
+      const r = await fetch(`${API}/admin/broadcast`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mensagem })
+      }).then(r => r.json());
+
+      mostrarResultado(res, `✅ Broadcast iniciado para ${r.total} clientes! Acompanhe no histórico abaixo.`, true);
+      document.getElementById('b-mensagem').value = '';
+      document.getElementById('b-contador').textContent = '0 caracteres';
+      setTimeout(carregarBroadcasts, 3000);
+    } catch (e) {
+      mostrarResultado(res, '❌ Erro: ' + e.message, false);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '📡 Enviar para todos';
+    }
+  }
+
+  function mostrarResultado(el, msg, ok) {
+    el.style.display = 'block';
+    el.className = 'resultado ' + (ok ? 'ok' : 'erro');
+    el.textContent = msg;
+    setTimeout(() => el.style.display = 'none', 5000);
+  }
+
+  // Iniciar
+  carregarDashboard();
+  setInterval(carregarDashboard, 30000); // atualiza stats a cada 30s
+</script>
+</body>
+</html>
