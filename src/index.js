@@ -30,28 +30,39 @@ function extrairDestinoMensagem(msg) {
   const key = msg?.key || {};
   const contextInfo = msg?.message?.extendedTextMessage?.contextInfo || {};
 
-  const candidatos = [
-    key.remoteJidAlt,
-    key.participantAlt,
-    key.remoteJidPn,
-    key.participantPn,
-    contextInfo.participantPn,
-    contextInfo.participant,
-    key.remoteJid,
-    key.participant
-  ].filter(Boolean);
-
   const formatar = (valor) => {
     const jid = construirJid(valor);
     if (!jid) return null;
     const numero = normalizarNumero(jid.split('@')[0]);
+    if (!numero) return null;
     return { jid, numero };
   };
 
-  const formatados = candidatos.map(formatar).filter(Boolean);
-  const comNumeroTelefonico = formatados.find(c => c.numero.length >= 10 && c.numero.length <= 13);
-  if (comNumeroTelefonico) return comNumeroTelefonico;
-  return formatados[0] || null;
+  const remoteJid = String(key.remoteJid || '');
+  if (remoteJid.endsWith('@s.whatsapp.net')) {
+    const principal = formatar(remoteJid);
+    if (principal) return principal;
+  }
+
+  const candidatosFallback = [
+    key.remoteJidPn,
+    key.participantPn,
+    contextInfo.participantPn,
+    contextInfo.participant,
+    key.participant,
+    key.remoteJid,
+    key.remoteJidAlt,
+    key.participantAlt
+  ].filter(Boolean);
+
+  for (const candidato of candidatosFallback) {
+    const destino = formatar(candidato);
+    if (destino && destino.numero.length >= 10 && destino.numero.length <= 13) {
+      return destino;
+    }
+  }
+
+  return null;
 }
 
 async function enviarMensagem(numeroOuJid, texto) {
