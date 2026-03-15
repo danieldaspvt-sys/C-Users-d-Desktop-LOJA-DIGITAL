@@ -19,11 +19,26 @@ function normalizarNumero(numeroOuJid) {
   return String(numeroOuJid || '').replace(/\D/g, '');
 }
 
-function construirJid(numeroOuJid) {
+function construirJid(numeroOuJid, server = 's.whatsapp.net') {
   const valor = String(numeroOuJid || '');
   if (valor.includes('@')) return valor;
   const numero = normalizarNumero(valor);
-  return numero ? `${numero}@s.whatsapp.net` : null;
+  return numero ? `${numero}@${server}` : null;
+}
+
+function inferirServer(valor, origem = '') {
+  const texto = String(valor || '');
+  if (texto.includes('@')) return texto.split('@')[1];
+
+  const numero = normalizarNumero(texto);
+  if (!numero) return 's.whatsapp.net';
+
+  if (String(origem).toLowerCase().includes('pn')) return 's.whatsapp.net';
+
+  // IDs longos sem sufixo geralmente representam LID, não número telefônico real
+  if (numero.length > 13) return 'lid';
+
+  return 's.whatsapp.net';
 }
 
 function extrairDestinoMensagem(msg) {
@@ -31,7 +46,8 @@ function extrairDestinoMensagem(msg) {
   const contextInfo = msg?.message?.extendedTextMessage?.contextInfo || {};
 
   const formatar = (valor, origem) => {
-    const jid = construirJid(valor);
+    const server = inferirServer(valor, origem);
+    const jid = construirJid(valor, server);
     if (!jid) return null;
     const numero = normalizarNumero(jid.split('@')[0]);
     if (!numero) return null;
