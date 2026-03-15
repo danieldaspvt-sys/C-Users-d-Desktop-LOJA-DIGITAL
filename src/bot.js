@@ -27,10 +27,20 @@ const {
 const { isAdmin, processarAdmin, setEnviarParaTodos } = require('./handlers/admin');
 
 const LOGGER = pino({ level: process.env.LOG_LEVEL || 'info' });
+const RECONNECT_DELAY_MS = 5000;
+
+function normalizarNumero(numero) {
+  return String(numero || '').replace(/\D/g, '');
+}
 
 function numeroParaJid(numero) {
-  const clean = String(numero || '').replace(/\D/g, '');
-  return clean.includes('@') ? clean : `${clean}@s.whatsapp.net`;
+  const raw = String(numero || '').trim();
+  if (!raw) throw new Error('Número inválido para envio');
+  if (raw.includes('@')) return raw;
+
+  const clean = normalizarNumero(raw);
+  if (!clean) throw new Error('Número inválido para envio');
+  return `${clean}@s.whatsapp.net`;
 }
 
 function textoDaMensagem(msg) {
@@ -45,142 +55,195 @@ function textoDaMensagem(msg) {
   ).trim();
 }
 
-function nomeRemetente(m) {
-  return m.pushName || m.notifyName || m.verifiedBizName || 'Cliente';
+function nomeRemetente(mensagem) {
+  return mensagem.pushName || mensagem.notifyName || mensagem.verifiedBizName || 'Cliente';
 }
 
-function deveIgnorarMensagem(msg) {
-  const remoteJid = msg?.key?.remoteJid || '';
+function deveIgnorarMensagem(mensagem) {
+  const remoteJid = mensagem?.key?.remoteJid || '';
   if (!remoteJid) return true;
-  if (msg.key?.fromMe) return true;
+  if (mensagem.key?.fromMe) return true;
   return remoteJid.endsWith('@g.us') || remoteJid === 'status@broadcast';
 }
 
 async function iniciarBot() {
   const authFolder = path.join(process.cwd(), 'auth_session');
   const { state, saveCreds } = await useMultiFileAuthState(authFolder);
-  const { version } = await fetchLatestBaileysVersion();
 
-  const sock = makeWASocket({
-    auth: state,
-    version,
-    printQRInTerminal: false,
-    logger: pino({ level: 'silent' }),
-    defaultQueryTimeoutMs: 60_000,
-    syncFullHistory: false,
-    markOnlineOnConnect: false,
-  });
+  let socketAtual = null;
+  let conectando = false;
+  let reconnectTimer = null;
+  let online = false;
 
   async function enviarTexto(numero, texto, salvar = true) {
+    if (!socketAtual || !online) throw new Error('Bot offline');
+
     const jid = numeroParaJid(numero);
-    await sock.sendMessage(jid, { text: texto });
-    if (salvar) db.salvarMensagem(String(numero).replace(/\D/g, ''), 'Cliente', 'enviada', texto);
+    await socketAtual.sendMessage(jid, { text: String(texto || '') });
+
+    if (salvar) {
+      const numeroDb = normalizarNumero(numero);
+      if (numeroDb) db.salvarMensagem(numeroDb, 'Cliente', 'enviada', String(texto || ''));
+    }
+  }
+
+  async function processarMensagem(mensagem) {
+    if (!mensagem || deveIgnorarMensagem(mensagem)) return;
+
+    const texto = textoDaMensagem(mensagem.message);
+    if (!texto) return;
+
+    const numero = normalizarNumero((mensagem.key.remoteJid || '').split('@')[0]);
+    if (!numero) return;
+
+    const nome = nomeRemetente(mensagem);
+    const responder = async (msg) => enviarTexto(numero, msg);
+
+    db.criarUsuario(numero, nome);
+    db.salvarMensagem(numero, nome, 'recebida', texto);
+
+    const textoNormalizado = texto.toLowerCase().trim();
+
+    try {
+      if (isAdmin(numero) && textoNormalizado.startsWith('!')) {
+        await processarAdmin(numero, textoNormalizado, responder);
+        return;
+      }
+
+      const estado = getEstado(numero);
+
+      if (textoNormalizado === '0' || textoNormalizado === 'menu') {
+        limparEstado(numero);
+        await responder(menuPrincipal(nome));
+        return;
+      }
+
+      if (estado.etapa === 'aguardando_confirmacao') {
+        if (['sim', 's', 'confirmar', 'ok'].includes(textoNormalizado)) {
+          await confirmarCompra(numero, responder);
+          return;
+        }
+
+        await responder('❌ Confirmação inválida. Digite *sim* para confirmar ou *0* para cancelar.');
+        return;
+      }
+
+      if (estado.etapa === 'aguardando_recarga') {
+        await processarRecarga(numero, textoNormalizado, responder);
+        return;
+      }
+
+      if (OPCOES_MENU[textoNormalizado]) {
+        await processarCompra(numero, OPCOES_MENU[textoNormalizado], responder);
+        return;
+      }
+
+      if (textoNormalizado === '7') {
+        await responder(msgSaldo(numero));
+        return;
+      }
+
+      if (textoNormalizado === '8') {
+        setEstado(numero, { etapa: 'aguardando_recarga' });
+        await responder(menuRecarga());
+        return;
+      }
+
+      if (textoNormalizado === '9') {
+        await responder(msgHistorico(numero));
+        return;
+      }
+
+      await responder(menuPrincipal(nome));
+    } catch (error) {
+      LOGGER.error({ error, numero }, 'Erro processando mensagem');
+      try {
+        await responder('❌ Ocorreu um erro inesperado. Digite *0* para voltar ao menu.');
+      } catch (sendError) {
+        LOGGER.error({ sendError, numero }, 'Falha ao enviar mensagem de erro para usuário');
+      }
+    }
+  }
+
+  function agendarReconexao() {
+    if (reconnectTimer) return;
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = null;
+      conectarSocket().catch((error) => LOGGER.error({ error }, 'Erro ao reconectar bot'));
+    }, RECONNECT_DELAY_MS);
+  }
+
+  async function conectarSocket() {
+    if (conectando) return;
+    conectando = true;
+
+    try {
+      const { version } = await fetchLatestBaileysVersion();
+
+      const socket = makeWASocket({
+        auth: state,
+        version,
+        printQRInTerminal: false,
+        logger: pino({ level: 'silent' }),
+        defaultQueryTimeoutMs: 60_000,
+        syncFullHistory: false,
+        markOnlineOnConnect: false,
+      });
+
+      socket.ev.on('creds.update', saveCreds);
+
+      socket.ev.on('connection.update', ({ connection, lastDisconnect, qr }) => {
+        if (qr) {
+          qrcode.generate(qr, { small: true });
+          LOGGER.info('Escaneie o QR code para conectar o WhatsApp');
+        }
+
+        if (connection === 'open') {
+          socketAtual = socket;
+          online = true;
+          LOGGER.info('✅ WhatsApp conectado');
+          return;
+        }
+
+        if (connection === 'close') {
+          online = false;
+          const statusCode = lastDisconnect?.error?.output?.statusCode;
+          const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+
+          LOGGER.warn({ statusCode }, 'Conexão do WhatsApp fechada');
+
+          if (shouldReconnect) {
+            LOGGER.info(`Tentando reconectar em ${RECONNECT_DELAY_MS / 1000}s...`);
+            agendarReconexao();
+          } else {
+            LOGGER.error('Sessão desconectada. Apague auth_session e reconecte.');
+          }
+        }
+      });
+
+      socket.ev.on('messages.upsert', async ({ type, messages }) => {
+        if (type !== 'notify' || !Array.isArray(messages)) return;
+
+        for (const mensagem of messages) {
+          await processarMensagem(mensagem);
+        }
+      });
+
+      socketAtual = socket;
+    } finally {
+      conectando = false;
+    }
   }
 
   setEnviarParaTodos(async (numero, mensagem) => {
     await enviarTexto(numero, mensagem);
   });
 
-  sock.ev.on('connection.update', ({ connection, lastDisconnect, qr }) => {
-    if (qr) {
-      qrcode.generate(qr, { small: true });
-      LOGGER.info('Escaneie o QR code para conectar o WhatsApp');
-    }
-
-    if (connection === 'open') LOGGER.info('✅ WhatsApp conectado');
-
-    if (connection === 'close') {
-      const statusCode = lastDisconnect?.error?.output?.statusCode;
-      const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
-
-      LOGGER.warn({ statusCode }, 'Conexão do WhatsApp fechada');
-      if (shouldReconnect) {
-        LOGGER.info('Tentando reconectar em 5s...');
-        setTimeout(() => {
-          iniciarBot().catch((error) => LOGGER.error({ error }, 'Erro ao reconectar bot'));
-        }, 5000);
-      } else {
-        LOGGER.error('Sessão desconectada. Apague auth_session e reconecte.');
-      }
-    }
-  });
-
-  sock.ev.on('creds.update', saveCreds);
-
-  sock.ev.on('messages.upsert', async ({ type, messages }) => {
-    if (type !== 'notify') return;
-    const m = messages?.[0];
-    if (!m || deveIgnorarMensagem(m)) return;
-
-    const texto = textoDaMensagem(m.message);
-    if (!texto) return;
-
-    const numero = (m.key.remoteJid || '').split('@')[0];
-    const nome = nomeRemetente(m);
-
-    db.criarUsuario(numero, nome);
-    db.salvarMensagem(numero, nome, 'recebida', texto);
-
-    try {
-      if (isAdmin(numero) && texto.startsWith('!')) {
-        await processarAdmin(numero, texto, (msg) => enviarTexto(numero, msg));
-        return;
-      }
-
-      const estado = getEstado(numero);
-      const textoNormalizado = texto.toLowerCase();
-
-      if (textoNormalizado === '0' || textoNormalizado === 'menu') {
-        limparEstado(numero);
-        await enviarTexto(numero, menuPrincipal(nome));
-        return;
-      }
-
-      if (estado.etapa === 'aguardando_confirmacao') {
-        if (['sim', 's', 'confirmar', 'ok'].includes(textoNormalizado)) {
-          await confirmarCompra(numero, (msg) => enviarTexto(numero, msg));
-          return;
-        }
-        await enviarTexto(numero, '❌ Confirmação inválida. Digite *sim* para confirmar ou *0* para cancelar.');
-        return;
-      }
-
-      if (estado.etapa === 'aguardando_recarga') {
-        await processarRecarga(numero, textoNormalizado, (msg) => enviarTexto(numero, msg));
-        return;
-      }
-
-      if (OPCOES_MENU[textoNormalizado]) {
-        await processarCompra(numero, OPCOES_MENU[textoNormalizado], (msg) => enviarTexto(numero, msg));
-        return;
-      }
-
-      if (textoNormalizado === '7') {
-        await enviarTexto(numero, msgSaldo(numero));
-        return;
-      }
-
-      if (textoNormalizado === '8') {
-        setEstado(numero, { etapa: 'aguardando_recarga' });
-        await enviarTexto(numero, menuRecarga());
-        return;
-      }
-
-      if (textoNormalizado === '9') {
-        await enviarTexto(numero, msgHistorico(numero));
-        return;
-      }
-
-      await enviarTexto(numero, menuPrincipal(nome));
-    } catch (error) {
-      LOGGER.error({ error, numero }, 'Erro processando mensagem');
-      await enviarTexto(numero, '❌ Ocorreu um erro inesperado. Digite *0* para voltar ao menu.');
-    }
-  });
+  await conectarSocket();
 
   return {
-    sock,
     enviarParaNumero: async (numero, mensagem) => enviarTexto(numero, mensagem),
+    isOnline: () => online,
   };
 }
 
