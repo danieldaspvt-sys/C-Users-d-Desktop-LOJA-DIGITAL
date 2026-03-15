@@ -2,6 +2,9 @@ const axios = require('axios');
 require('dotenv').config();
 
 async function criarPix(valor, descricao, pixId) {
+  if (!process.env.PUSHINPAY_TOKEN) throw new Error('PUSHINPAY_TOKEN não configurado');
+  if (!process.env.WEBHOOK_URL) throw new Error('WEBHOOK_URL não configurado');
+
   const res = await axios.post(
     'https://api.pushinpay.com.br/api/pix/cashIn',
     {
@@ -12,7 +15,9 @@ async function criarPix(valor, descricao, pixId) {
     },
     { headers: { Authorization: `Bearer ${process.env.PUSHINPAY_TOKEN}`, 'Content-Type': 'application/json' } }
   );
-  return { pixCopiaECola: res.data.qr_code, valor };
+  const pixCopiaECola = res?.data?.qr_code;
+  if (!pixCopiaECola) throw new Error('Resposta inválida ao gerar PIX');
+  return { pixCopiaECola, valor };
 }
 
 module.exports = { criarPix };
