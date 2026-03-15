@@ -2,6 +2,10 @@ const axios = require('axios');
 require('dotenv').config();
 
 const API_KEY = process.env.HEROSMS_API_KEY;
+
+function validarConfig() {
+  if (!API_KEY) throw new Error('HEROSMS_API_KEY não configurada');
+}
 const BASE_URL = 'https://hero-sms.com/stubs/handler_api.php';
 
 const SERVICOS = {
@@ -14,6 +18,7 @@ const SERVICOS = {
 };
 
 async function pedirNumero(servico) {
+  validarConfig();
   const s = SERVICOS[servico];
   if (!s) throw new Error('Serviço inválido');
   const res = await axios.get(BASE_URL, { params: { api_key: API_KEY, action: 'getNumber', service: s.produto, country: s.pais } });
@@ -23,6 +28,7 @@ async function pedirNumero(servico) {
 }
 
 async function verificarSMS(activationId) {
+  validarConfig();
   const res = await axios.get(BASE_URL, { params: { api_key: API_KEY, action: 'getStatus', id: activationId } });
   const data = res.data;
   if (data.startsWith('STATUS_OK:')) return { status: 'recebido', codigo: data.split(':')[1] };
@@ -32,10 +38,12 @@ async function verificarSMS(activationId) {
 }
 
 async function cancelarNumero(activationId) {
+  validarConfig();
   await axios.get(BASE_URL, { params: { api_key: API_KEY, action: 'setStatus', id: activationId, status: 8 } });
 }
 
 async function confirmarNumero(activationId) {
+  validarConfig();
   await axios.get(BASE_URL, { params: { api_key: API_KEY, action: 'setStatus', id: activationId, status: 6 } });
 }
 
@@ -43,17 +51,24 @@ async function aguardarSMS(activationId, callback, timeoutMs = 20 * 60 * 1000) {
   const inicio = Date.now();
   return new Promise((resolve, reject) => {
     const verificar = async () => {
-      if (Date.now() - inicio > timeoutMs) {
-        await cancelarNumero(activationId);
-        return reject(new Error('timeout'));
+      try {
+        if (Date.now() - inicio > timeoutMs) {
+          await cancelarNumero(activationId);
+          return reject(new Error('timeout'));
+        }
+        const resultado = await verificarSMS(activationId);
+        if (resultado.status === 'recebido') {
+          await confirmarNumero(activationId);
+          callback(resultado.codigo);
+          return resolve(resultado.codigo);
+        }
+        if (resultado.status === 'cancelado') {
+          return reject(new Error('cancelado'));
+        }
+        setTimeout(verificar, 5000);
+      } catch (error) {
+        return reject(error);
       }
-      const resultado = await verificarSMS(activationId);
-      if (resultado.status === 'recebido') {
-        await confirmarNumero(activationId);
-        callback(resultado.codigo);
-        return resolve(resultado.codigo);
-      }
-      setTimeout(verificar, 5000);
     };
     verificar();
   });

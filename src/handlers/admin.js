@@ -17,15 +17,15 @@ async function processarAdmin(numero, texto, enviarMsg) {
       return enviarMsg(`💰 Saldo de *${alvo}*: R$${db.getSaldo(alvo).toFixed(2)}`);
     }
     case '!addsaldo': {
-      const alvo = partes[1]; const valor = parseFloat(partes[2]);
-      if (!alvo || isNaN(valor)) return enviarMsg(`❌ Use: !addsaldo NUMERO VALOR`);
+      const alvo = partes[1]; const valor = Number(partes[2]);
+      if (!alvo || !Number.isFinite(valor) || valor <= 0) return enviarMsg(`❌ Use: !addsaldo NUMERO VALOR_POSITIVO`);
       db.criarUsuario(alvo, 'Cliente');
       db.adicionarSaldo(alvo, valor);
       return enviarMsg(`✅ R$${valor.toFixed(2)} adicionado!\nNovo saldo: R$${db.getSaldo(alvo).toFixed(2)}`);
     }
     case '!removesaldo': {
-      const alvo = partes[1]; const valor = parseFloat(partes[2]);
-      if (!alvo || isNaN(valor)) return enviarMsg(`❌ Use: !removesaldo NUMERO VALOR`);
+      const alvo = partes[1]; const valor = Number(partes[2]);
+      if (!alvo || !Number.isFinite(valor) || valor <= 0) return enviarMsg(`❌ Use: !removesaldo NUMERO VALOR_POSITIVO`);
       if (db.getSaldo(alvo) < valor) return enviarMsg(`❌ Saldo insuficiente`);
       db.removerSaldo(alvo, valor);
       return enviarMsg(`✅ R$${valor.toFixed(2)} removido!\nNovo saldo: R$${db.getSaldo(alvo).toFixed(2)}`);

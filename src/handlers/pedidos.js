@@ -32,11 +32,17 @@ async function confirmarCompra(numero, enviarMsg) {
       db.atualizarPedido(pedidoId, { numero_virtual: numVirtual, activation_id: activationId, status: 'concluido', codigo_sms: codigo });
       await enviarMsg(msgCodigoRecebido(codigo));
     }).catch(async (err) => {
+      db.adicionarSaldo(numero, s.preco);
       if (err.message === 'timeout') {
-        db.adicionarSaldo(numero, s.preco);
         db.atualizarPedido(pedidoId, { numero_virtual: numVirtual, activation_id: activationId, status: 'timeout', codigo_sms: null });
         await enviarMsg(msgTimeout());
+        return;
       }
+      db.atualizarPedido(pedidoId, { numero_virtual: numVirtual, activation_id: activationId, status: 'falha', codigo_sms: null });
+      await enviarMsg(`❌ Não foi possível concluir a ativação (${err.message}).
+Seu crédito foi reembolsado ✅
+
+Digite *0* para voltar ao menu.`);
     });
   } catch (err) {
     db.adicionarSaldo(numero, s.preco);

@@ -15,19 +15,67 @@ app.use(cors());
 
 let sock = null;
 
-async function enviarMensagem(numero, texto) {
+function normalizarNumero(numeroOuJid) {
+  return String(numeroOuJid || '').replace(/\D/g, '');
+}
+
+function construirJid(numeroOuJid) {
+  const valor = String(numeroOuJid || '');
+  if (valor.includes('@')) return valor;
+  const numero = normalizarNumero(valor);
+  return numero ? `${numero}@s.whatsapp.net` : null;
+}
+
+function extrairDestinoMensagem(msg) {
+  const key = msg?.key || {};
+  const contextInfo = msg?.message?.extendedTextMessage?.contextInfo || {};
+
+  const formatar = (valor, origem) => {
+    const jid = construirJid(valor);
+    if (!jid) return null;
+    const numero = normalizarNumero(jid.split('@')[0]);
+    if (!numero) return null;
+    return { jid, numero, origem };
+  };
+
+  const ehTelefone = (numero) => numero.length >= 10 && numero.length <= 13;
+
+  const candidatosPrioritarios = [
+    ['key.remoteJidPn', key.remoteJidPn],
+    ['key.participantPn', key.participantPn],
+    ['contextInfo.participantPn', contextInfo.participantPn],
+    ['key.remoteJidAlt', key.remoteJidAlt],
+    ['key.participantAlt', key.participantAlt],
+    ['contextInfo.participant', contextInfo.participant],
+    ['key.participant', key.participant],
+    ['key.remoteJid', key.remoteJid]
+  ];
+
+  for (const [origem, valor] of candidatosPrioritarios) {
+    const destino = formatar(valor, origem);
+    if (destino && ehTelefone(destino.numero)) return destino;
+  }
+
+  const fallback = formatar(key.remoteJid, 'fallback:key.remoteJid');
+  if (fallback) return fallback;
+
+  return null;
+}
+
+async function enviarMensagem(numeroOuJid, texto) {
   if (!sock) { console.log('❌ sock null'); return; }
   try {
-    const jid = `${numero}@s.whatsapp.net`;
+    const jid = construirJid(numeroOuJid);
+    if (!jid) throw new Error('destinatário inválido');
     await sock.presenceSubscribe(jid);
     await delay(500);
     await sock.sendPresenceUpdate('composing', jid);
     await delay(1000);
     await sock.sendPresenceUpdate('paused', jid);
     await sock.sendMessage(jid, { text: texto });
-    console.log(`✅ Enviado para ${numero}`);
+    console.log(`✅ Enviado para ${jid}`);
   } catch (err) {
-    console.error(`❌ Erro ao enviar para ${numero}:`, err.message);
+    console.error(`❌ Erro ao enviar para ${numeroOuJid}:`, err.message);
   }
 }
 
@@ -35,12 +83,22 @@ async function enviarMensagem(numero, texto) {
 app.post('/webhook/pix', async (req, res) => {
   try {
     const { external_reference, status } = req.body;
-    if (status === 'paid' || status === 'approved') {
+    if (!external_reference || !status) {
+      return res.status(400).json({ error: 'external_reference e status são obrigatórios' });
+    }
+
+    const statusPago = String(status).toLowerCase();
+    if (statusPago === 'paid' || statusPago === 'approved') {
       const recarga = db.confirmarRecarga(external_reference);
       if (recarga) {
         const saldo = db.getSaldo(recarga.usuario_numero);
         await enviarMensagem(recarga.usuario_numero,
-          `✅ *PAGAMENTO CONFIRMADO!*\n\n💰 Valor: *R$${recarga.valor.toFixed(2)}*\n💳 Saldo: *R$${saldo.toFixed(2)}*\n\nDigite *0* para o menu 🛒`
+          `✅ *PAGAMENTO CONFIRMADO!*
+
+💰 Valor: *R$${recarga.valor.toFixed(2)}*
+💳 Saldo: *R$${saldo.toFixed(2)}*
+
+Digite *0* para o menu 🛒`
         );
       }
     }
@@ -67,13 +125,24 @@ app.get('/admin/mensagens', (req, res) => res.json(db.todasMensagens()));
 app.get('/admin/broadcasts', (req, res) => res.json(db.todosBroadcasts()));
 app.post('/admin/saldo/add', (req, res) => {
   const { numero, valor } = req.body;
+  const valorNumerico = Number(valor);
+  if (!numero || !Number.isFinite(valorNumerico) || valorNumerico <= 0) {
+    return res.status(400).json({ error: 'numero e valor positivo são obrigatórios' });
+  }
   db.criarUsuario(numero, 'Cliente');
-  db.adicionarSaldo(numero, valor);
+  db.adicionarSaldo(numero, valorNumerico);
   res.json({ saldo: db.getSaldo(numero) });
 });
 app.post('/admin/saldo/remove', (req, res) => {
   const { numero, valor } = req.body;
-  db.removerSaldo(numero, valor);
+  const valorNumerico = Number(valor);
+  if (!numero || !Number.isFinite(valorNumerico) || valorNumerico <= 0) {
+    return res.status(400).json({ error: 'numero e valor positivo são obrigatórios' });
+  }
+  if (db.getSaldo(numero) < valorNumerico) {
+    return res.status(400).json({ error: 'saldo insuficiente' });
+  }
+  db.removerSaldo(numero, valorNumerico);
   res.json({ saldo: db.getSaldo(numero) });
 });
 app.post('/admin/broadcast', async (req, res) => {
@@ -130,19 +199,27 @@ async function conectarWhatsApp() {
   sock.ev.on('messages.upsert', async ({ messages, type }) => {
     if (type !== 'notify') return;
     for (const msg of messages) {
-      if (msg.key.fromMe || !msg.message || msg.key.remoteJid.includes('@g.us')) continue;
-      const numero = msg.key.remoteJid.replace('@s.whatsapp.net', '');
+      const remoteJid = msg?.key?.remoteJid || '';
+      if (msg?.key?.fromMe || !msg?.message || remoteJid.includes('@g.us')) continue;
+
+      const destino = extrairDestinoMensagem(msg);
+      if (!destino || !destino.jid) {
+        console.log('⚠️ Mensagem ignorada: não foi possível identificar destinatário');
+        continue;
+      }
+
       const nome = msg.pushName || 'Cliente';
       const texto =
         msg.message?.conversation ||
         msg.message?.extendedTextMessage?.text ||
         '';
       if (!texto) continue;
-      console.log(`📩 [${numero}] ${nome}: ${texto}`);
+
+      console.log(`📩 [${destino.numero}] ${nome}: ${texto} (${destino.origem})`);
       try {
-        await processarMensagem(numero, nome, texto, (r) => enviarMensagem(numero, r));
+        await processarMensagem(destino.numero, nome, texto, (r) => enviarMensagem(destino.jid, r));
       } catch (err) {
-        console.error(`❌ Erro [${numero}]:`, err.message);
+        console.error(`❌ Erro [${destino.numero}]:`, err.message);
         console.error(err.stack);
       }
     }
