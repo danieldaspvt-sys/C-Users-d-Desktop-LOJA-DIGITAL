@@ -16,7 +16,16 @@
     }
   ],
   "pedidos": [],
-  "recargas": [],
+  "recargas": [
+    {
+      "id": 1,
+      "usuario_numero": "98677393760328",
+      "valor": 10,
+      "pix_id": "recarga_98677393760328_1773533221238",
+      "status": "pendente",
+      "criado_em": "2026-03-15T00:07:02.109Z"
+    }
+  ],
   "mensagens": [
     {
       "id": 1,
@@ -129,6 +138,54 @@
       "direcao": "enviada",
       "texto": "👋 Olá, *D*! Bem-vindo à *DigiStore* 🛒\n\nEscolha uma opção:\n\n📱 *NÚMEROS VIRTUAIS*\n1️⃣ Número WhatsApp BR — R$7,00\n2️⃣ Número Telegram BR — R$7,00\n3️⃣ Número Gmail/Google — R$7,00\n4️⃣ Número Instagram — R$7,00\n5️⃣ Número Facebook — R$7,00\n6️⃣ Número USA/Europa — R$10,00\n\n💳 *MINHA CONTA*\n7️⃣ Ver meu saldo\n8️⃣ Recarregar créditos\n9️⃣ Histórico de pedidos\n\nDigite o número da opção 👇",
       "criado_em": "2026-03-14T23:42:49.463Z"
+    },
+    {
+      "id": 15,
+      "usuario_numero": "98677393760328",
+      "usuario_nome": "D",
+      "direcao": "recebida",
+      "texto": "8",
+      "criado_em": "2026-03-15T00:06:52.277Z"
+    },
+    {
+      "id": 16,
+      "usuario_numero": "98677393760328",
+      "usuario_nome": "D",
+      "direcao": "enviada",
+      "texto": "💳 *RECARREGAR CRÉDITOS*\n\n1️⃣ R$10,00\n2️⃣ R$20,00\n3️⃣ R$50,00\n4️⃣ R$100,00\n\nDigite *0* para voltar",
+      "criado_em": "2026-03-15T00:06:52.278Z"
+    },
+    {
+      "id": 17,
+      "usuario_numero": "98677393760328",
+      "usuario_nome": "D",
+      "direcao": "recebida",
+      "texto": "1",
+      "criado_em": "2026-03-15T00:07:01.237Z"
+    },
+    {
+      "id": 18,
+      "usuario_numero": "98677393760328",
+      "usuario_nome": "D",
+      "direcao": "enviada",
+      "texto": "💳 *PIX GERADO!*\n\nValor: *R$10.00*\n\n📋 *Pix Copia e Cola:*\n`00020101021226810014br.gov.bcb.pix2559qr.woovi.com/qr/v2/cob/886dcb25-be2c-4879-9a72-0c507b62992d520400005303986540510.005802BR5909PUSHINPAY6011HORTOLANDIA62290525a2b9c3b7b59441f0aebcab68e63047218`\n\n⏳ Aguardando pagamento...\n_Saldo adicionado automaticamente após confirmação_",
+      "criado_em": "2026-03-15T00:07:02.110Z"
+    },
+    {
+      "id": 19,
+      "usuario_numero": "98677393760328",
+      "usuario_nome": "D",
+      "direcao": "recebida",
+      "texto": "Oi",
+      "criado_em": "2026-03-15T00:22:50.047Z"
+    },
+    {
+      "id": 20,
+      "usuario_numero": "98677393760328",
+      "usuario_nome": "D",
+      "direcao": "enviada",
+      "texto": "👋 Olá, *D*! Bem-vindo à *DigiStore* 🛒\n\nEscolha uma opção:\n\n📱 *NÚMEROS VIRTUAIS*\n1️⃣ Número WhatsApp BR — R$7,00\n2️⃣ Número Telegram BR — R$7,00\n3️⃣ Número Gmail/Google — R$7,00\n4️⃣ Número Instagram — R$7,00\n5️⃣ Número Facebook — R$7,00\n6️⃣ Número USA/Europa — R$10,00\n\n💳 *MINHA CONTA*\n7️⃣ Ver meu saldo\n8️⃣ Recarregar créditos\n9️⃣ Histórico de pedidos\n\nDigite o número da opção 👇",
+      "criado_em": "2026-03-15T00:22:50.047Z"
     }
   ],
   "broadcasts": []
