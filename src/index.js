@@ -15,19 +15,59 @@ app.use(cors());
 
 let sock = null;
 
-async function enviarMensagem(numero, texto) {
+function normalizarNumero(numeroOuJid) {
+  return String(numeroOuJid || '').replace(/\D/g, '');
+}
+
+function construirJid(numeroOuJid) {
+  const valor = String(numeroOuJid || '');
+  if (valor.includes('@')) return valor;
+  const numero = normalizarNumero(valor);
+  return numero ? `${numero}@s.whatsapp.net` : null;
+}
+
+function extrairDestinoMensagem(msg) {
+  const key = msg?.key || {};
+  const contextInfo = msg?.message?.extendedTextMessage?.contextInfo || {};
+
+  const candidatos = [
+    key.remoteJidAlt,
+    key.participantAlt,
+    key.remoteJidPn,
+    key.participantPn,
+    contextInfo.participantPn,
+    contextInfo.participant,
+    key.remoteJid,
+    key.participant
+  ].filter(Boolean);
+
+  const formatar = (valor) => {
+    const jid = construirJid(valor);
+    if (!jid) return null;
+    const numero = normalizarNumero(jid.split('@')[0]);
+    return { jid, numero };
+  };
+
+  const formatados = candidatos.map(formatar).filter(Boolean);
+  const comNumeroTelefonico = formatados.find(c => c.numero.length >= 10 && c.numero.length <= 13);
+  if (comNumeroTelefonico) return comNumeroTelefonico;
+  return formatados[0] || null;
+}
+
+async function enviarMensagem(numeroOuJid, texto) {
   if (!sock) { console.log('❌ sock null'); return; }
   try {
-    const jid = `${numero}@s.whatsapp.net`;
+    const jid = construirJid(numeroOuJid);
+    if (!jid) throw new Error('destinatário inválido');
     await sock.presenceSubscribe(jid);
     await delay(500);
     await sock.sendPresenceUpdate('composing', jid);
     await delay(1000);
     await sock.sendPresenceUpdate('paused', jid);
     await sock.sendMessage(jid, { text: texto });
-    console.log(`✅ Enviado para ${numero}`);
+    console.log(`✅ Enviado para ${jid}`);
   } catch (err) {
-    console.error(`❌ Erro ao enviar para ${numero}:`, err.message);
+    console.error(`❌ Erro ao enviar para ${numeroOuJid}:`, err.message);
   }
 }
 
@@ -151,19 +191,27 @@ async function conectarWhatsApp() {
   sock.ev.on('messages.upsert', async ({ messages, type }) => {
     if (type !== 'notify') return;
     for (const msg of messages) {
-      if (msg.key.fromMe || !msg.message || msg.key.remoteJid.includes('@g.us')) continue;
-      const numero = msg.key.remoteJid.replace('@s.whatsapp.net', '');
+      const remoteJid = msg?.key?.remoteJid || '';
+      if (msg?.key?.fromMe || !msg?.message || remoteJid.includes('@g.us')) continue;
+
+      const destino = extrairDestinoMensagem(msg);
+      if (!destino || !destino.jid) {
+        console.log('⚠️ Mensagem ignorada: não foi possível identificar destinatário');
+        continue;
+      }
+
       const nome = msg.pushName || 'Cliente';
       const texto =
         msg.message?.conversation ||
         msg.message?.extendedTextMessage?.text ||
         '';
       if (!texto) continue;
-      console.log(`📩 [${numero}] ${nome}: ${texto}`);
+
+      console.log(`📩 [${destino.numero}] ${nome}: ${texto}`);
       try {
-        await processarMensagem(numero, nome, texto, (r) => enviarMensagem(numero, r));
+        await processarMensagem(destino.numero, nome, texto, (r) => enviarMensagem(destino.jid, r));
       } catch (err) {
-        console.error(`❌ Erro [${numero}]:`, err.message);
+        console.error(`❌ Erro [${destino.numero}]:`, err.message);
         console.error(err.stack);
       }
     }
