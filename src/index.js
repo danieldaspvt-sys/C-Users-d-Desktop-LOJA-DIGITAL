@@ -30,37 +30,34 @@ function extrairDestinoMensagem(msg) {
   const key = msg?.key || {};
   const contextInfo = msg?.message?.extendedTextMessage?.contextInfo || {};
 
-  const formatar = (valor) => {
+  const formatar = (valor, origem) => {
     const jid = construirJid(valor);
     if (!jid) return null;
     const numero = normalizarNumero(jid.split('@')[0]);
     if (!numero) return null;
-    return { jid, numero };
+    return { jid, numero, origem };
   };
 
-  const remoteJid = String(key.remoteJid || '');
-  if (remoteJid.endsWith('@s.whatsapp.net')) {
-    const principal = formatar(remoteJid);
-    if (principal) return principal;
+  const ehTelefone = (numero) => numero.length >= 10 && numero.length <= 13;
+
+  const candidatosPrioritarios = [
+    ['key.remoteJidPn', key.remoteJidPn],
+    ['key.participantPn', key.participantPn],
+    ['contextInfo.participantPn', contextInfo.participantPn],
+    ['key.remoteJidAlt', key.remoteJidAlt],
+    ['key.participantAlt', key.participantAlt],
+    ['contextInfo.participant', contextInfo.participant],
+    ['key.participant', key.participant],
+    ['key.remoteJid', key.remoteJid]
+  ];
+
+  for (const [origem, valor] of candidatosPrioritarios) {
+    const destino = formatar(valor, origem);
+    if (destino && ehTelefone(destino.numero)) return destino;
   }
 
-  const candidatosFallback = [
-    key.remoteJidPn,
-    key.participantPn,
-    contextInfo.participantPn,
-    contextInfo.participant,
-    key.participant,
-    key.remoteJid,
-    key.remoteJidAlt,
-    key.participantAlt
-  ].filter(Boolean);
-
-  for (const candidato of candidatosFallback) {
-    const destino = formatar(candidato);
-    if (destino && destino.numero.length >= 10 && destino.numero.length <= 13) {
-      return destino;
-    }
-  }
+  const fallback = formatar(key.remoteJid, 'fallback:key.remoteJid');
+  if (fallback) return fallback;
 
   return null;
 }
@@ -218,7 +215,7 @@ async function conectarWhatsApp() {
         '';
       if (!texto) continue;
 
-      console.log(`📩 [${destino.numero}] ${nome}: ${texto}`);
+      console.log(`📩 [${destino.numero}] ${nome}: ${texto} (${destino.origem})`);
       try {
         await processarMensagem(destino.numero, nome, texto, (r) => enviarMensagem(destino.jid, r));
       } catch (err) {
