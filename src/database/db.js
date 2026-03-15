@@ -8,6 +8,12 @@ const db = low(adapter);
 db.defaults({ usuarios: [], pedidos: [], recargas: [], mensagens: [], broadcasts: [] }).write();
 
 function agora() { return new Date().toISOString(); }
+function normalizarValor(valor) {
+  const numero = Number(valor);
+  if (!Number.isFinite(numero) || numero <= 0) return 0;
+  return Math.round(numero * 100) / 100;
+}
+
 function nextId(col) {
   const items = db.get(col).value();
   if (!items.length) return 1;
@@ -22,11 +28,18 @@ function criarUsuario(n, nome) {
 function getSaldo(n) { const u = getUsuario(n); return u ? u.saldo : 0; }
 function adicionarSaldo(n, v) {
   const u = getUsuario(n);
-  if (u) db.get('usuarios').find({ numero: n }).assign({ saldo: Math.round((u.saldo + v) * 100) / 100 }).write();
+  const valor = normalizarValor(v);
+  if (u && valor > 0) {
+    db.get('usuarios').find({ numero: n }).assign({ saldo: Math.round((u.saldo + valor) * 100) / 100 }).write();
+  }
 }
 function removerSaldo(n, v) {
   const u = getUsuario(n);
-  if (u) db.get('usuarios').find({ numero: n }).assign({ saldo: Math.round((u.saldo - v) * 100) / 100 }).write();
+  const valor = normalizarValor(v);
+  if (u && valor > 0) {
+    const novoSaldo = Math.max(0, u.saldo - valor);
+    db.get('usuarios').find({ numero: n }).assign({ saldo: Math.round(novoSaldo * 100) / 100 }).write();
+  }
 }
 function temSaldo(n, v) { return getSaldo(n) >= v; }
 function todosUsuarios() { return db.get('usuarios').value().sort((a,b) => b.criado_em > a.criado_em ? 1 : -1); }

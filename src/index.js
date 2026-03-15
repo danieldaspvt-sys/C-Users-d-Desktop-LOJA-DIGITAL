@@ -35,12 +35,22 @@ async function enviarMensagem(numero, texto) {
 app.post('/webhook/pix', async (req, res) => {
   try {
     const { external_reference, status } = req.body;
-    if (status === 'paid' || status === 'approved') {
+    if (!external_reference || !status) {
+      return res.status(400).json({ error: 'external_reference e status são obrigatórios' });
+    }
+
+    const statusPago = String(status).toLowerCase();
+    if (statusPago === 'paid' || statusPago === 'approved') {
       const recarga = db.confirmarRecarga(external_reference);
       if (recarga) {
         const saldo = db.getSaldo(recarga.usuario_numero);
         await enviarMensagem(recarga.usuario_numero,
-          `✅ *PAGAMENTO CONFIRMADO!*\n\n💰 Valor: *R$${recarga.valor.toFixed(2)}*\n💳 Saldo: *R$${saldo.toFixed(2)}*\n\nDigite *0* para o menu 🛒`
+          `✅ *PAGAMENTO CONFIRMADO!*
+
+💰 Valor: *R$${recarga.valor.toFixed(2)}*
+💳 Saldo: *R$${saldo.toFixed(2)}*
+
+Digite *0* para o menu 🛒`
         );
       }
     }
@@ -67,13 +77,24 @@ app.get('/admin/mensagens', (req, res) => res.json(db.todasMensagens()));
 app.get('/admin/broadcasts', (req, res) => res.json(db.todosBroadcasts()));
 app.post('/admin/saldo/add', (req, res) => {
   const { numero, valor } = req.body;
+  const valorNumerico = Number(valor);
+  if (!numero || !Number.isFinite(valorNumerico) || valorNumerico <= 0) {
+    return res.status(400).json({ error: 'numero e valor positivo são obrigatórios' });
+  }
   db.criarUsuario(numero, 'Cliente');
-  db.adicionarSaldo(numero, valor);
+  db.adicionarSaldo(numero, valorNumerico);
   res.json({ saldo: db.getSaldo(numero) });
 });
 app.post('/admin/saldo/remove', (req, res) => {
   const { numero, valor } = req.body;
-  db.removerSaldo(numero, valor);
+  const valorNumerico = Number(valor);
+  if (!numero || !Number.isFinite(valorNumerico) || valorNumerico <= 0) {
+    return res.status(400).json({ error: 'numero e valor positivo são obrigatórios' });
+  }
+  if (db.getSaldo(numero) < valorNumerico) {
+    return res.status(400).json({ error: 'saldo insuficiente' });
+  }
+  db.removerSaldo(numero, valorNumerico);
   res.json({ saldo: db.getSaldo(numero) });
 });
 app.post('/admin/broadcast', async (req, res) => {
